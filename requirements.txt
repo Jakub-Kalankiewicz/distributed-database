@@ -1,0 +1,5 @@
+Flask
+Flask-CORS
+pymongo
+pydantic
+mpi4py

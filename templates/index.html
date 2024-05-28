@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Vector Management</h1>
+        <div class="form">
+            <h2>Add Vector</h2>
+            <label for="vector">Vector (comma separated):</label>
+            <input type="text" id="vector">
+            <label for="label">Label:</label>
+            <input type="text" id="label">
+            <button id="addVector">Add Vector</button>
+        </div>
+        <div class="vectors">
+            <h2>All Vectors</h2>
+            <ul id="vectorList"></ul>
+        </div>
+    </div>
+    <script>
+        function fetchVectors() {
+            $.get('/api/vectors', function(data) {
+                $('#vectorList').empty();
+                data.forEach(function(vector) {
+                    $('#vectorList').append(
+                        `<li>${vector.label}: [${vector.vector.join(', ')}]
+                        <button onclick="deleteVector('${vector.uuid}')">Delete</button></li>`
+                    );
+                });
+            });
+        }
+
+        function deleteVector(uuid) {
+            $.ajax({
+                url: `/api/vectors/${uuid}`,
+                type: 'DELETE',
+                success: function(result) {
+                    fetchVectors();
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            fetchVectors();
+
+            $('#addVector').click(function() {
+                const vector = $('#vector').val().split(',').map(Number);
+                const label = $('#label').val();
+                $.ajax({
+                    url: '/api/vectors',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ vector, label }),
+                    success: function() {
+                        $('#vector').val('');
+                        $('#label').val('');
+                        fetchVectors();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
