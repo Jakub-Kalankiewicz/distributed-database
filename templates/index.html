@@ -8,63 +8,118 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Vector Management</h1>
-        <div class="form">
-            <h2>Add Vector</h2>
-            <label for="vector">Vector (comma separated):</label>
-            <input type="text" id="vector">
-            <label for="label">Label:</label>
-            <input type="text" id="label">
-            <button id="addVector">Add Vector</button>
-        </div>
-        <div class="vectors">
-            <h2>All Vectors</h2>
-            <ul id="vectorList"></ul>
-        </div>
+<div class="container">
+    <h1>Vector Management</h1>
+    <div class="info">
+        <h2>System Information</h2>
+        <p>Max Workers: <span id="maxWorkers">{{ max_workers }}</span></p>
+        <p>Database Statuses:</p>
+        <ul>
+            <li>Database 1: <span id="db1Status">Unknown</span></li>
+            <li>Database 2: <span id="db2Status">Unknown</span></li>
+        </ul>
+        <h2>Set Max Workers</h2>
+        <label for="maxWorkersInput">Max Workers:</label>
+        <input type="number" id="maxWorkersInput">
+        <button id="setMaxWorkers">Set Max Workers</button>
     </div>
-    <script>
-        function fetchVectors() {
-            $.get('/api/vectors', function(data) {
-                $('#vectorList').empty();
-                data.forEach(function(vector) {
-                    $('#vectorList').append(
-                        `<li>${vector.label}: [${vector.vector.join(', ')}]
-                        <button onclick="deleteVector('${vector.uuid}')">Delete</button></li>`
-                    );
-                });
-            });
-        }
+    <div class="form">
+        <h2>Add Vector</h2>
+        <label for="vector">Vector (comma separated):</label>
+        <input type="text" id="vector">
+        <label for="label">Label:</label>
+        <input type="text" id="label">
+        <button id="addVector">Add Vector</button>
+    </div>
+    <div class="vectors">
+        <h2>All Vectors</h2>
+        <ul id="vectorList"></ul>
+    </div>
+    <div class="logs">
+        <h2>Insertion Details</h2>
+        <p>Used Workers: <span id="usedWorkers"></span></p>
+        <ul id="logList"></ul>
+    </div>
+</div>
+<script>
+    function fetchSystemInfo() {
+        $.get('/api/system-info', function (data) {
+            $('#maxWorkers').text(data.max_workers);
+            $('#db1Status').text(data.db1_status);
+            $('#db2Status').text(data.db2_status);
+        });
+    }
 
-        function deleteVector(uuid) {
+    function fetchVectors() {
+        $.get('/api/vectors', function (data) {
+            $('#vectorList').empty();
+            data.forEach(function (vector) {
+                $('#vectorList').append(
+                    `<li>${vector.label}: [${vector.vector.join(', ')}]
+                        <button onclick="deleteVector('${vector.uuid}')">Delete</button></li>`
+                );
+            });
+        });
+    }
+
+    function deleteVector(uuid) {
+        $.ajax({
+            url: `/api/vectors/${uuid}`,
+            type: 'DELETE',
+            success: function (result) {
+                fetchVectors();
+            }
+        });
+    }
+
+    function setMaxWorkers() {
+        const maxWorkers = parseInt($('#maxWorkersInput').val());
+        if (maxWorkers > 0) {
             $.ajax({
-                url: `/api/vectors/${uuid}`,
-                type: 'DELETE',
-                success: function(result) {
-                    fetchVectors();
+                url: '/api/set-max-workers',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({max_workers: maxWorkers}),
+                success: function (response) {
+                    $('#maxWorkers').text(response.max_workers);
                 }
             });
         }
+    }
 
-        $(document).ready(function() {
-            fetchVectors();
+    $(document).ready(function () {
+        fetchSystemInfo();
+        fetchVectors();
 
-            $('#addVector').click(function() {
-                const vector = $('#vector').val().split(',').map(Number);
-                const label = $('#label').val();
-                $.ajax({
-                    url: '/api/vectors',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ vector, label }),
-                    success: function() {
-                        $('#vector').val('');
-                        $('#label').val('');
-                        fetchVectors();
-                    }
-                });
+        $('#addVector').click(function () {
+            const vector = $('#vector').val().split(',').map(Number);
+            const label = $('#label').val();
+            $.ajax({
+                url: '/api/vectors',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({vector, label}),
+                success: function (response) {
+                    $('#vector').val('');
+                    $('#label').val('');
+                    fetchVectors();
+                    updateLogs(response.used_workers, response.logs);
+                }
             });
         });
-    </script>
+
+        $('#setMaxWorkers').click(function () {
+            setMaxWorkers();
+        });
+    });
+
+    function updateLogs(usedWorkers, logEntries) {
+        $('#usedWorkers').text(usedWorkers);
+        $('#logList').empty();
+        logEntries.forEach(function (entry) {
+            $('#logList').append(`<li>${entry}</li>`);
+        });
+    }
+</script>
 </body>
 </html>

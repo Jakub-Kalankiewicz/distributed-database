@@ -1,8 +1,10 @@
 import math
 from concurrent.futures import ThreadPoolExecutor
 
-from app import db1, db2
+from app import db1, db2, app
 from app.models import VectorEntity
+
+MAX_WORKERS = app.config['MAX_WORKERS']
 
 
 def insert_vector(db, data):
@@ -10,9 +12,11 @@ def insert_vector(db, data):
     return str(result.inserted_id)
 
 
-def parallel_insert_vectors(vector_entity, max_workers=2):
+def parallel_insert_vectors(vector_entity, max_workers=MAX_WORKERS):
     chunk_size = math.ceil(len(vector_entity.vector) / max_workers)
     vector_chunks = [vector_entity.vector[i:i + chunk_size] for i in range(0, len(vector_entity.vector), chunk_size)]
+
+    logs = []
 
     def task(db, chunk, rank):
         partial_entity = {
@@ -21,6 +25,8 @@ def parallel_insert_vectors(vector_entity, max_workers=2):
             'label': vector_entity.label,
             'chunk_id': rank
         }
+        db_name = "db1" if db == db1 else "db2"
+        logs.append(f"Worker {rank} writing chunk to {db_name}: {chunk}")
         return insert_vector(db, partial_entity)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -31,10 +37,10 @@ def parallel_insert_vectors(vector_entity, max_workers=2):
 
         results = [f.result() for f in futures]
 
-    return results
+    return results, logs, max_workers
 
 
-def parallel_get_vector_chunks(uuid, max_workers=2):
+def parallel_get_vector_chunks(uuid, max_workers=MAX_WORKERS):
     def task(db):
         return list(db.vectors.find({'uuid': uuid}))
 
