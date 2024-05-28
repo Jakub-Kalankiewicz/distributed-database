@@ -1,28 +1,30 @@
 version: '3.8'
 
 services:
+  flask-app:
+    build: .
+    container_name: flask-app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb1
+      - mongodb2
+    environment:
+      - MONGO_URI_1=mongodb://mongodb1:27017/mongodb1
+      - MONGO_URI_2=mongodb://mongodb2:27017/mongodb2
+
   mongodb1:
     image: mongo:latest
     container_name: mongodb1
     ports:
-      - 27017:27017
+      - "27017:27017"
     volumes:
       - ./data/mongodb1:/data/db
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=example
 
   mongodb2:
     image: mongo:latest
     container_name: mongodb2
     ports:
-      - 27018:27017
+      - "27018:27017"
     volumes:
       - ./data/mongodb2:/data/db
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=example
-
-volumes:
-  mongodb1:
-  mongodb2:

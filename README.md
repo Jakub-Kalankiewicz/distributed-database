@@ -1,4 +1,4 @@
-## Wymagane biblioteki
-* pip install -r requirements.txt
+## Distributed database
 * docker-compose up
-* python run.py
+
+and hit the http://localhost:5000
