@@ -6,7 +6,6 @@ from app.services import get_all_vectors, parallel_insert_vectors, delete_vector
 
 max_workers = app.config['MAX_WORKERS']
 
-
 def get_db_status(db):
     try:
         db.command('ping')
@@ -14,11 +13,9 @@ def get_db_status(db):
     except Exception:
         return "Offline"
 
-
 @app.route('/')
 def index():
     return render_template('index.html', max_workers=max_workers)
-
 
 @app.route('/api/system-info', methods=['GET'])
 def system_info():
@@ -29,7 +26,6 @@ def system_info():
         'db1_status': db1_status,
         'db2_status': db2_status
     }), 200
-
 
 @app.route('/api/set-max-workers', methods=['POST'])
 def set_max_workers():
@@ -42,12 +38,10 @@ def set_max_workers():
     else:
         return jsonify({"error": "Invalid input"}), 400
 
-
 @app.route('/api/vectors', methods=['GET'])
 def get_vectors():
-    vectors = get_all_vectors()
-    return jsonify([vector.dict() for vector in vectors]), 200
-
+    vectors, time_taken = get_all_vectors()
+    return jsonify([vector.dict() for vector in vectors], time_taken), 200
 
 @app.route('/api/vectors', methods=['POST'])
 def add_vector():
@@ -55,21 +49,19 @@ def add_vector():
     if not data:
         return jsonify({"error": "Invalid input"}), 400
     vector_entity = VectorEntity(**data)
-    results, logs, used_workers = parallel_insert_vectors(vector_entity, max_workers=max_workers)
+    results, logs, used_workers, time_taken = parallel_insert_vectors(vector_entity, max_workers=max_workers)
     if results:
-        return jsonify({"uuid": vector_entity.uuid, "logs": logs, "used_workers": used_workers}), 201
+        return jsonify({"uuid": vector_entity.uuid, "logs": logs, "used_workers": used_workers, "time_taken": time_taken}), 201
     else:
         return jsonify({"error": "Insertion failed"}), 500
 
-
 @app.route('/api/vectors/<uuid>', methods=['GET'])
 def get_vector(uuid):
-    full_vector = parallel_get_vector_chunks(uuid, max_workers=max_workers)
+    full_vector, time_taken = parallel_get_vector_chunks(uuid, max_workers=max_workers)
     if full_vector:
-        return jsonify({"uuid": uuid, "vector": full_vector}), 200
+        return jsonify({"uuid": uuid, "vector": full_vector, "time_taken": time_taken}), 200
     else:
         return jsonify({"error": "Vector not found or retrieval failed"}), 404
-
 
 @app.route('/api/vectors/<uuid>', methods=['DELETE'])
 def remove_vector(uuid):
